@@ -1,3 +1,243 @@
+'use client';
+
+import React, {useState, useRef, useEffect} from 'react';
+import {Button} from '@/components/ui/button';
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
+import {Label} from '@/components/ui/label';
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
+import {recommendMovie, RecommendMovieOutput} from '@/ai/flows/recommend-movie';
+import {analyzeEmotion, AnalyzeEmotionOutput} from '@/ai/flows/analyze-emotion';
+import {Movie} from '@/services/movie-recommendation';
+import {cn} from '@/lib/utils';
+import {Camera} from 'lucide-react';
+
+const LANGUAGES = [
+  'English',
+  'Hindi',
+  'Spanish',
+  'French',
+  'German',
+  'Mandarin',
+  'Japanese',
+  'Russian',
+  'Bengali',
+  'Telugu',
+  'Marathi',
+  'Tamil',
+  'Urdu',
+  'Gujarati',
+  'Kannada',
+  'Odia',
+  'Malayalam',
+  'Punjabi',
+];
+
+const GENRES = [
+  'Action',
+  'Comedy',
+  'Drama',
+  'Thriller',
+  'Horror',
+  'Sci-Fi',
+  'Romance',
+  'Animation',
+  'Adventure',
+  'Fantasy',
+  'Mystery',
+  'Crime',
+  'Documentary',
+  'Historical',
+  'Musical',
+  'Western',
+];
+
 export default function Home() {
-  return <></>;
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState(false);
+  const [emotion, setEmotion] = useState<string | null>(null);
+  const [language, setLanguage] = useState('English');
+  const [genre, setGenre] = useState('Action');
+  const [recommendations, setRecommendations] = useState<Movie[] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isEmotionLoading, setIsEmotionLoading] = useState(false);
+
+  useEffect(() => {
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({video: true});
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        setHasCameraPermission(true);
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+      }
+    };
+
+    getCameraPermission();
+  }, []);
+
+  const handleRecommendMovie = async () => {
+    if (!emotion) {
+      alert('Please detect emotion first.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result: RecommendMovieOutput = await recommendMovie({
+        emotion: emotion,
+        language: language,
+        genre: genre,
+      });
+      setRecommendations(result.movies);
+    } catch (error) {
+      console.error('Error recommending movie:', error);
+      alert('Error recommending movie. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDetectEmotion = async () => {
+    setIsEmotionLoading(true);
+    try {
+      if (videoRef.current) {
+        // Capture a frame from the video stream as a data URL
+        const canvas = document.createElement('canvas');
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const webcamFeed = canvas.toDataURL('image/jpeg');
+
+        // Call the analyzeEmotion API with the webcam feed
+        const result: AnalyzeEmotionOutput = await analyzeEmotion({
+          webcamFeed: webcamFeed,
+        });
+
+        setEmotion(result.emotion);
+      } else {
+        alert('Webcam feed not available.');
+      }
+    } catch (error) {
+      console.error('Error detecting emotion:', error);
+      alert('Error detecting emotion. Please try again.');
+    } finally {
+      setIsEmotionLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen py-2">
+      <h1 className="text-3xl font-bold mb-4 text-primary">CineFeel - Movie Recommendation App</h1>
+
+      <Card className="w-full max-w-md border-primary shadow-md">
+        <CardHeader>
+          <CardTitle className="text-lg">Webcam Feed</CardTitle>
+          <CardDescription>
+            {hasCameraPermission ? 'Camera access granted.' : 'Camera access denied.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center">
+          {hasCameraPermission ? (
+            <video ref={videoRef} autoPlay className="rounded-md w-full h-48 object-cover" />
+          ) : (
+            <div className="rounded-md w-full h-48 flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-500">
+              Camera access required
+            </div>
+          )}
+          <Button
+            onClick={handleDetectEmotion}
+            disabled={!hasCameraPermission}
+            className="mt-4 bg-accent text-primary-foreground hover:bg-accent-foreground hover:text-primary"
+            isLoading={isEmotionLoading}
+          >
+            {isEmotionLoading ? 'Detecting...' : 'Detect Emotion'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-col md:flex-row gap-4 mt-4 w-full max-w-md">
+        <Card className="w-full border-primary shadow-md">
+          <CardHeader>
+            <CardTitle>Detected Emotion</CardTitle>
+            <CardDescription>Current emotion:</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className={cn('font-semibold', !emotion && 'text-muted-foreground')}>
+              {emotion ? emotion : 'No emotion detected'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="w-full border-primary shadow-md">
+          <CardHeader>
+            <CardTitle>Recommendation Options</CardTitle>
+            <CardDescription>Select language and genre:</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="language">Language</Label>
+              <Select onValueChange={(value) => setLanguage(value)}>
+                <SelectTrigger id="language">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LANGUAGES.map((lang) => (
+                    <SelectItem key={lang} value={lang}>
+                      {lang}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="genre">Genre</Label>
+              <Select onValueChange={(value) => setGenre(value)}>
+                <SelectTrigger id="genre">
+                  <SelectValue placeholder="Select genre" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GENRES.map((g) => (
+                    <SelectItem key={g} value={g}>
+                      {g}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Button
+        onClick={handleRecommendMovie}
+        disabled={!emotion}
+        className="mt-4 bg-primary text-primary-foreground hover:bg-primary-foreground hover:text-primary"
+        isLoading={isLoading}
+      >
+        {isLoading ? 'Recommending...' : 'Recommend Movie'}
+      </Button>
+
+      {recommendations && recommendations.length > 0 && (
+        <Card className="w-full max-w-md mt-4 border-primary shadow-md">
+          <CardHeader>
+            <CardTitle>Recommended Movies</CardTitle>
+            <CardDescription>Based on your emotion, language, and genre preferences:</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul>
+              {recommendations.map((movie) => (
+                <li key={movie.title} className="py-2">
+                  {movie.title} ({movie.genre})
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 }

@@ -1,1 +1,2 @@
-// Flows will be imported for their side effects in this file.
+import '@/ai/flows/recommend-movie.ts';
+import '@/ai/flows/analyze-emotion.ts';
