@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Recommends movies based on emotion, language, and genre.
+ * @fileOverview Recommends movies based on emotion, language, and genre using Gemini.
  *
  * - recommendMovie - A function that handles the movie recommendation process.
  * - RecommendMovieInput - The input type for the recommendMovie function.
@@ -9,7 +9,6 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import {getMovieRecommendations, Movie} from '@/services/movie-recommendation';
 
 const RecommendMovieInputSchema = z.object({
   emotion: z.string().describe('The detected emotion of the user.'),
@@ -24,7 +23,7 @@ const RecommendMovieOutputSchema = z.object({
       title: z.string().describe('The title of the movie.'),
       genre: z.string().describe('The genre of the movie.'),
     })
-  ).describe('A list of recommended movies.'),
+  ).describe('A list of recommended movies.,'),
 });
 export type RecommendMovieOutput = z.infer<typeof RecommendMovieOutputSchema>;
 
@@ -51,7 +50,14 @@ const prompt = ai.definePrompt({
       ).describe('A list of recommended movies.'),
     }),
   },
-  prompt: `Recommend movies based on the user\'s detected emotion, selected language, and genre.\n\nThe user is feeling {{{emotion}}}.\nThe user wants a movie in {{{language}}} and of genre {{{genre}}}.\n\nRecommend movies that match these preferences.\n`,
+  prompt: `You are a movie expert. Recommend three movies based on the user's detected emotion, selected language, and genre.
+The output must be a JSON array of objects. Each object must have a "title" and a "genre" field.
+
+User Emotion: {{{emotion}}}
+Movie Language: {{{language}}}
+Movie Genre: {{{genre}}}
+
+JSON:`,
 });
 
 const recommendMovieFlow = ai.defineFlow<
@@ -64,14 +70,7 @@ const recommendMovieFlow = ai.defineFlow<
     outputSchema: RecommendMovieOutputSchema,
   },
   async input => {
-    // Call the getMovieRecommendations service to get movie recommendations
-    const movies: Movie[] = await getMovieRecommendations(
-      input.emotion,
-      input.language,
-      input.genre
-    );
-
-    // Return the movie recommendations in the expected output format
-    return {movies};
+    const {output} = await prompt(input);
+    return output!;
   }
 );

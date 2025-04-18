@@ -9,7 +9,9 @@ import {recommendMovie, RecommendMovieOutput} from '@/ai/flows/recommend-movie';
 import {analyzeEmotion, AnalyzeEmotionOutput} from '@/ai/flows/analyze-emotion';
 import {Movie} from '@/services/movie-recommendation';
 import {cn} from '@/lib/utils';
+import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {Camera} from 'lucide-react';
+import {useToast} from '@/hooks/use-toast';
 
 const LANGUAGES = [
   'English',
@@ -60,18 +62,25 @@ export default function Home() {
   const [recommendations, setRecommendations] = useState<Movie[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isEmotionLoading, setIsEmotionLoading] = useState(false);
+  const {toast} = useToast();
 
   useEffect(() => {
     const getCameraPermission = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({video: true});
+        setHasCameraPermission(true);
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
-        setHasCameraPermission(true);
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings to use this app.',
+        });
       }
     };
 
@@ -80,7 +89,11 @@ export default function Home() {
 
   const handleRecommendMovie = async () => {
     if (!emotion) {
-      alert('Please detect emotion first.');
+      toast({
+        variant: 'destructive',
+        title: 'Emotion Required',
+        description: 'Please detect emotion first.',
+      });
       return;
     }
 
@@ -91,10 +104,15 @@ export default function Home() {
         language: language,
         genre: genre,
       });
+
       setRecommendations(result.movies);
     } catch (error) {
       console.error('Error recommending movie:', error);
-      alert('Error recommending movie. Please try again.');
+      toast({
+        variant: 'destructive',
+        title: 'Recommendation Error',
+        description: 'Error recommending movie. Please try again.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -119,11 +137,19 @@ export default function Home() {
 
         setEmotion(result.emotion);
       } else {
-        alert('Webcam feed not available.');
+        toast({
+          variant: 'destructive',
+          title: 'Webcam Error',
+          description: 'Webcam feed not available.',
+        });
       }
     } catch (error) {
       console.error('Error detecting emotion:', error);
-      alert('Error detecting emotion. Please try again.');
+      toast({
+        variant: 'destructive',
+        title: 'Emotion Detection Error',
+        description: 'Error detecting emotion. Please try again.',
+      });
     } finally {
       setIsEmotionLoading(false);
     }
@@ -141,13 +167,16 @@ export default function Home() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center">
-          {hasCameraPermission ? (
-            <video ref={videoRef} autoPlay className="rounded-md w-full h-48 object-cover" />
-          ) : (
-            <div className="rounded-md w-full h-48 flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-500">
-              Camera access required
-            </div>
-          )}
+          <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted />
+          { !(hasCameraPermission) && (
+            <Alert variant="destructive">
+              <AlertTitle>Camera Access Required</AlertTitle>
+              <AlertDescription>
+                Please allow camera access to use this feature.
+              </AlertDescription>
+            </Alert>
+          )
+          }
           <Button
             onClick={handleDetectEmotion}
             disabled={!hasCameraPermission}
