@@ -51,6 +51,12 @@ const analyzeEmotionFlow = ai.defineFlow<
   outputSchema: AnalyzeEmotionOutputSchema,
 },
 async input => {
-  const {output} = await prompt(input);
-  return output!;
+  try {
+    const {output} = await prompt(input);
+    return output!;
+  } catch (error) {
+    console.error('Error in analyzeEmotionFlow:', error);
+    // Re-throw the error or return a default value/error object
+    throw new Error(`Emotion analysis failed: ${error}`);
+  }
 });
