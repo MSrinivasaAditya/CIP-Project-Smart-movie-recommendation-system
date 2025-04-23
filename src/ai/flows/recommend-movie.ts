@@ -23,7 +23,7 @@ const RecommendMovieOutputSchema = z.object({
       title: z.string().describe('The title of the movie.'),
       genre: z.string().describe('The genre of the movie.'),
     })
-  ).describe('A list of recommended movies.,'),
+  ).describe('A list of recommended movies'),
 });
 export type RecommendMovieOutput = z.infer<typeof RecommendMovieOutputSchema>;
 
@@ -74,3 +74,4 @@ const recommendMovieFlow = ai.defineFlow<
     return output!;
   }
 );
+
