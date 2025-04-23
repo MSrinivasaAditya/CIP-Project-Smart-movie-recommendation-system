@@ -32,8 +32,10 @@ const prompt = ai.definePrompt({
       emotion: z.string().describe('The detected emotion of the user.'),
     }),
   },
-  prompt: `You are an AI that can analyze a person's emotion from an image.  Here are the emotions you can use: "Happy", "Sad", "Angry", "Neutral", "Excited".
+  prompt: `You are an AI that can analyze a person's emotion from an image.  Here are the emotions you can use: "Happy", "Sad", "Angry", "Neutral", "Excited", "Disgusted", "Surprised", "Fearful".
 Analyze the user's emotion from the webcam feed provided as a data URI. Return the detected emotion as a single word.
+
+It is very important that you are accurate in emotion detection.
 
 Image Data URI: {{{webcamFeed}}}
 
