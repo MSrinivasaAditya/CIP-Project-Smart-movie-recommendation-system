@@ -1,17 +1,13 @@
 'use server';
 /**
  * @fileOverview Detects the emotion of the user from the webcam feed.
- *
- * - analyzeEmotion - A function that handles the emotion analysis process.
- * - AnalyzeEmotionInput - The input type for the analyzeEmotion function.
- * - AnalyzeEmotionOutput - The return type for the analyzeEmotion function.
  */
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
 
 const AnalyzeEmotionInputSchema = z.object({
-  webcamFeed: z.string().describe('The webcam feed from the user.'),
+  webcamFeed: z.string().describe('The webcam feed from the user as a data URI (e.g., data:image/jpeg;base64,...).'),
 });
 export type AnalyzeEmotionInput = z.infer<typeof AnalyzeEmotionInputSchema>;
 
@@ -28,7 +24,7 @@ const prompt = ai.definePrompt({
   name: 'analyzeEmotionPrompt',
   input: {
     schema: z.object({
-      webcamFeed: z.string().describe('The webcam feed from the user.'),
+      webcamFeed: z.string().describe('The webcam feed from the user as a data URI (e.g., data:image/jpeg;base64,...).'),
     }),
   },
   output: {
@@ -36,9 +32,10 @@ const prompt = ai.definePrompt({
       emotion: z.string().describe('The detected emotion of the user.'),
     }),
   },
-  prompt: `Analyze the user's emotion from the webcam feed. Return just the emotion.
+  prompt: `You are an AI that can analyze a person's emotion from an image.  Here are the emotions you can use: "Happy", "Sad", "Angry", "Neutral", "Excited".
+Analyze the user's emotion from the webcam feed provided as a data URI.
 
-Webcam feed: {{{webcamFeed}}}
+Webcam feed: {{media url=webcamFeed}}
 
 Detected emotion:`,    
 });

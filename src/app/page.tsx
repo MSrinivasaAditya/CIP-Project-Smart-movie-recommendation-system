@@ -12,6 +12,7 @@ import {cn} from '@/lib/utils';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {Camera} from 'lucide-react';
 import {useToast} from '@/hooks/use-toast';
+import {Slider} from '@/components/ui/slider';
 
 const LANGUAGES = [
   'English',
@@ -53,16 +54,20 @@ const GENRES = [
   'Western',
 ];
 
+const DEFAULT_EMOTION = 'Neutral';
+
 export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
-  const [emotion, setEmotion] = useState<string | null>(null);
+  const [emotion, setEmotion] = useState<string | null>(DEFAULT_EMOTION);
   const [language, setLanguage] = useState('English');
   const [genre, setGenre] = useState('Action');
   const [recommendations, setRecommendations] = useState<Movie[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isEmotionLoading, setIsEmotionLoading] = useState(false);
   const {toast} = useToast();
+  const [moodValue, setMoodValue] = useState<number[]>([50]); // Initial value for the mood slider
+
 
   useEffect(() => {
     const getCameraPermission = async () => {
@@ -92,7 +97,7 @@ export default function Home() {
       toast({
         variant: 'destructive',
         title: 'Emotion Required',
-        description: 'Please detect emotion first.',
+        description: 'Please select an emotion.',
       });
       return;
     }
@@ -135,7 +140,18 @@ export default function Home() {
           webcamFeed: webcamFeed,
         });
 
-        setEmotion(result.emotion);
+        // Ensure the emotion is not null or undefined before setting it.
+        if (result?.emotion) {
+            setEmotion(result.emotion);
+        } else {
+            // Set a default emotion or handle the null case as needed.
+            setEmotion(DEFAULT_EMOTION); // Setting to a default emotion.
+            toast({
+                variant: 'destructive',
+                title: 'Emotion Detection Failed',
+                description: 'Could not detect emotion. Using default.',
+            });
+        }
       } else {
         toast({
           variant: 'destructive',
@@ -154,6 +170,25 @@ export default function Home() {
       setIsEmotionLoading(false);
     }
   };
+
+  const handleMoodChange = (value: number[]) => {
+    setMoodValue(value);
+    // Map the slider value to an emotion
+    const moodMap = {
+      0: 'Angry',
+      25: 'Sad',
+      50: 'Neutral',
+      75: 'Happy',
+      100: 'Excited',
+    };
+    
+    const closestValue = Object.keys(moodMap).reduce((prev, curr) => {
+      return Math.abs(parseInt(curr) - value[0]) < Math.abs(parseInt(prev) - value[0]) ? curr : prev;
+    });
+
+    setEmotion((moodMap as any)[closestValue]);
+  };
+
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -194,10 +229,21 @@ export default function Home() {
             <CardTitle>Detected Emotion</CardTitle>
             <CardDescription>Current emotion:</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-4">
             <p className={cn('font-semibold', !emotion && 'text-muted-foreground')}>
               {emotion ? emotion : 'No emotion detected'}
             </p>
+
+            <div className="grid gap-2">
+              <Label htmlFor="mood">Select Mood</Label>
+              <Slider
+                id="mood"
+                defaultValue={moodValue}
+                max={100}
+                step={1}
+                onValueChange={handleMoodChange}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -267,7 +313,7 @@ export default function Home() {
           </CardContent>
         </Card>
       )}
+      
     </div>
   );
 }
-
