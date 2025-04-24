@@ -55,7 +55,7 @@ const prompt = ai.definePrompt({
   },
   prompt: `You are a movie expert. Recommend three movies based on the user's detected emotion, selected language, and genre.
 The output must be a JSON array of objects. Each object must have a "title", "genre", and "moviePoster" field.
-The moviePoster URL field should be a link to the movie poster image from the internet.
+The moviePoster URL field should be a link to the movie poster image from the internet. Provide images from themoviedb.org.
 
 User Emotion: {{{emotion}}}
 Movie Language: {{{language}}}
@@ -63,27 +63,6 @@ Movie Genre: {{{genre}}}
 
 JSON:`,
 });
-
-async function fetchMoviePoster(movieTitle: string): Promise<string> {
-  const apiKey = 'f1d61ca1fd33a51b491241ba40974a06'; // Replace with your TMDB API key
-  const baseUrl = 'https://api.themoviedb.org/3/search/movie';
-  const imageUrl = 'https://image.tmdb.org/t/p/w500';
-  try {
-    const response = await fetch(`${baseUrl}?api_key=${apiKey}&query=${encodeURIComponent(movieTitle)}`);
-    const data = await response.json();
-
-    if (data.results && data.results.length > 0) {
-      const posterPath = data.results[0].poster_path;
-      if (posterPath) {
-        return `${imageUrl}${posterPath}`;
-      }
-    }
-    return 'https://upload.wikimedia.org/wikipedia/commons/6/64/Poster_not_available.jpg';
-  } catch (error) {
-    console.error('Error fetching movie poster:', error);
-    return 'https://upload.wikimedia.org/wikipedia/commons/6/64/Poster_not_available.jpg';
-  }
-}
 
 const recommendMovieFlow = ai.defineFlow<
   typeof RecommendMovieInputSchema,
@@ -103,14 +82,7 @@ const recommendMovieFlow = ai.defineFlow<
         return { movies: [] };
       }
 
-      // Fetch movie posters for each recommended movie
-      const moviesWithPosters = await Promise.all(
-        output.movies.map(async movie => {
-          const moviePoster = await fetchMoviePoster(movie.title);
-          return { ...movie, moviePoster };
-        })
-      );
-      return { movies: moviesWithPosters };
+      return output;
     } catch (error) {
       console.error('Error in recommendMovieFlow:', error);
       return { movies: [] };
