@@ -1,4 +1,5 @@
 'use server';
+
 /**
  * @fileOverview Recommends movies based on emotion, language, and genre using Gemini.
  *
@@ -22,8 +23,9 @@ const RecommendMovieOutputSchema = z.object({
     z.object({
       title: z.string().describe('The title of the movie.'),
       genre: z.string().describe('The genre of the movie.'),
+      moviePoster: z.string().describe('URL of the movie poster image.'),
     })
-  ).describe('A list of recommended movies'),
+  ).describe('A list of recommended movies with title, genre and movie poster URL'),
 });
 export type RecommendMovieOutput = z.infer<typeof RecommendMovieOutputSchema>;
 
@@ -46,12 +48,14 @@ const prompt = ai.definePrompt({
         z.object({
           title: z.string().describe('The title of the movie.'),
           genre: z.string().describe('The genre of the movie.'),
+          moviePoster: z.string().describe('URL of the movie poster image.'),
         })
-      ).describe('A list of recommended movies.'),
+      ).describe('A list of recommended movies with title, genre and movie poster URL.'),
     }),
   },
   prompt: `You are a movie expert. Recommend three movies based on the user's detected emotion, selected language, and genre.
-The output must be a JSON array of objects. Each object must have a "title" and a "genre" field.
+The output must be a JSON array of objects. Each object must have a "title", "genre", and "moviePoster" field.
+The moviePoster URL field should be a link to the movie poster image from the internet.
 
 User Emotion: {{{emotion}}}
 Movie Language: {{{language}}}
@@ -59,6 +63,27 @@ Movie Genre: {{{genre}}}
 
 JSON:`,
 });
+
+async function fetchMoviePoster(movieTitle: string): Promise<string> {
+  const apiKey = 'f1d61ca1fd33a51b491241ba40974a06'; // Replace with your TMDB API key
+  const baseUrl = 'https://api.themoviedb.org/3/search/movie';
+  const imageUrl = 'https://image.tmdb.org/t/p/w500';
+  try {
+    const response = await fetch(`${baseUrl}?api_key=${apiKey}&query=${encodeURIComponent(movieTitle)}`);
+    const data = await response.json();
+
+    if (data.results && data.results.length > 0) {
+      const posterPath = data.results[0].poster_path;
+      if (posterPath) {
+        return `${imageUrl}${posterPath}`;
+      }
+    }
+    return 'https://upload.wikimedia.org/wikipedia/commons/6/64/Poster_not_available.jpg';
+  } catch (error) {
+    console.error('Error fetching movie poster:', error);
+    return 'https://upload.wikimedia.org/wikipedia/commons/6/64/Poster_not_available.jpg';
+  }
+}
 
 const recommendMovieFlow = ai.defineFlow<
   typeof RecommendMovieInputSchema,
@@ -70,8 +95,25 @@ const recommendMovieFlow = ai.defineFlow<
     outputSchema: RecommendMovieOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+      const {output} = await prompt(input);
+
+      if (!output || !output.movies) {
+        console.warn('Movie recommendation returned empty or invalid response.');
+        return { movies: [] };
+      }
+
+      // Fetch movie posters for each recommended movie
+      const moviesWithPosters = await Promise.all(
+        output.movies.map(async movie => {
+          const moviePoster = await fetchMoviePoster(movie.title);
+          return { ...movie, moviePoster };
+        })
+      );
+      return { movies: moviesWithPosters };
+    } catch (error) {
+      console.error('Error in recommendMovieFlow:', error);
+      return { movies: [] };
+    }
   }
 );
-

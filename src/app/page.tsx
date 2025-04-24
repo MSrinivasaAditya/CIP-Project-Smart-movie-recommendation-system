@@ -13,6 +13,7 @@ import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {Camera} from 'lucide-react';
 import {useToast} from '@/hooks/use-toast';
 import {Slider} from '@/components/ui/slider';
+import Image from 'next/image';
 
 const LANGUAGES = [
   'English',
@@ -62,12 +63,13 @@ export default function Home() {
   const [emotion, setEmotion] = useState<string | null>(DEFAULT_EMOTION);
   const [language, setLanguage] = useState('English');
   const [genre, setGenre] = useState('Action');
-  const [recommendations, setRecommendations] = useState<Movie[] | null>(null);
+  const [recommendations, setRecommendations] = useState<
+    {title: string; genre: string; moviePoster: string}[] | null
+  >(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isEmotionLoading, setIsEmotionLoading] = useState(false);
   const {toast} = useToast();
   const [moodValue, setMoodValue] = useState<number[]>([50]); // Initial value for the mood slider
-
 
   useEffect(() => {
     const getCameraPermission = async () => {
@@ -142,15 +144,15 @@ export default function Home() {
 
         // Ensure the emotion is not null or undefined before setting it.
         if (result?.emotion) {
-            setEmotion(result.emotion);
+          setEmotion(result.emotion);
         } else {
-            // Set a default emotion or handle the null case as needed.
-            setEmotion(DEFAULT_EMOTION); // Setting to a default emotion.
-            toast({
-                variant: 'destructive',
-                title: 'Emotion Detection Failed',
-                description: 'Could not detect emotion. Using default.',
-            });
+          // Set a default emotion or handle the null case as needed.
+          setEmotion(DEFAULT_EMOTION); // Setting to a default emotion.
+          toast({
+            variant: 'destructive',
+            title: 'Emotion Detection Failed',
+            description: 'Could not detect emotion. Using default.',
+          });
         }
       } else {
         toast({
@@ -181,7 +183,7 @@ export default function Home() {
       75: 'Happy',
       100: 'Excited',
     };
-    
+
     const closestValue = Object.keys(moodMap).reduce((prev, curr) => {
       return Math.abs(parseInt(curr) - value[0]) < Math.abs(parseInt(prev) - value[0]) ? curr : prev;
     });
@@ -189,9 +191,8 @@ export default function Home() {
     setEmotion((moodMap as any)[closestValue]);
   };
 
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-2">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4">
       <h1 className="text-3xl font-bold mb-4 text-primary">CineFeel - Movie Recommendation App</h1>
 
       <Card className="w-full max-w-md border-primary shadow-md">
@@ -203,15 +204,14 @@ export default function Home() {
         </CardHeader>
         <CardContent className="flex flex-col items-center">
           <video ref={videoRef} className="w-full aspect-video rounded-md" autoPlay muted />
-          { !(hasCameraPermission) && (
+          {!hasCameraPermission && (
             <Alert variant="destructive">
               <AlertTitle>Camera Access Required</AlertTitle>
               <AlertDescription>
                 Please allow camera access to use this feature.
               </AlertDescription>
             </Alert>
-          )
-          }
+          )}
           <Button
             onClick={handleDetectEmotion}
             disabled={!hasCameraPermission}
@@ -296,24 +296,43 @@ export default function Home() {
         {isLoading ? 'Recommending...' : 'Recommend Movie'}
       </Button>
 
-      {recommendations && recommendations.length > 0 && (
+      {recommendations && recommendations.length > 0 ? (
         <Card className="w-full max-w-md mt-4 border-primary shadow-md">
           <CardHeader>
             <CardTitle>Recommended Movies</CardTitle>
             <CardDescription>Based on your emotion, language, and genre preferences:</CardDescription>
           </CardHeader>
           <CardContent>
-            <ul>
-              {recommendations.map((movie) => (
-                <li key={movie.title} className="py-2">
-                  {movie.title} ({movie.genre})
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {recommendations.map((movie, index) => (
+                <li key={`${movie.title}-${index}`} className="py-2">
+                  <div className="flex flex-col items-center">
+                    {movie.moviePoster && (
+                      <Image
+                        src={movie.moviePoster}
+                        alt={movie.title}
+                        width={200}
+                        height={300}
+                        className="rounded-md mb-2"
+                        key={movie.title}
+                      />
+                    )}
+                    <span className="text-center">{movie.title}</span>
+                    <span className="text-center text-sm text-muted-foreground">({movie.genre})</span>
+                  </div>
                 </li>
               ))}
             </ul>
           </CardContent>
         </Card>
-      )}
-      
+      ) : recommendations !== null ? (
+        <Card className="w-full max-w-md mt-4 border-primary shadow-md">
+          <CardHeader>
+            <CardTitle>No Movies Found</CardTitle>
+            <CardDescription>No movies were found based on your preferences. Please try again.</CardDescription>
+          </CardHeader>
+        </Card>
+      ) : null}
     </div>
   );
 }

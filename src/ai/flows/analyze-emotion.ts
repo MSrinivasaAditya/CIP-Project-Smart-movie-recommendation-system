@@ -1,4 +1,5 @@
 'use server';
+
 /**
  * @fileOverview Detects the emotion of the user from the webcam feed.
  */
@@ -12,7 +13,7 @@ const AnalyzeEmotionInputSchema = z.object({
 export type AnalyzeEmotionInput = z.infer<typeof AnalyzeEmotionInputSchema>;
 
 const AnalyzeEmotionOutputSchema = z.object({
-  emotion: z.string().describe('The detected emotion of the user.'),
+  emotion: z.string().describe('The detected emotion of the user. Possible values: Happy, Sad, Angry, Neutral, Excited, Disgusted, Surprised, Fearful.'),
 });
 export type AnalyzeEmotionOutput = z.infer<typeof AnalyzeEmotionOutputSchema>;
 
@@ -29,7 +30,7 @@ const prompt = ai.definePrompt({
   },
   output: {
     schema: z.object({
-      emotion: z.string().describe('The detected emotion of the user.'),
+      emotion: z.string().describe('The detected emotion of the user. Possible values: Happy, Sad, Angry, Neutral, Excited, Disgusted, Surprised, Fearful.'),
     }),
   },
   prompt: `You are an AI that can analyze a person's emotion from an image.  Here are the emotions you can use: "Happy", "Sad", "Angry", "Neutral", "Excited", "Disgusted", "Surprised", "Fearful".
@@ -37,9 +38,9 @@ Analyze the user's emotion from the webcam feed provided as a data URI. Return t
 
 It is very important that you are accurate in emotion detection.
 
-Image Data URI: {{{webcamFeed}}}
+Image Data URI: {{media url=webcamFeed}}
 
-Detected emotion:`,    
+Detected emotion:`,
 });
 
 const analyzeEmotionFlow = ai.defineFlow<
@@ -53,9 +54,14 @@ const analyzeEmotionFlow = ai.defineFlow<
 async input => {
   try {
     const {output} = await prompt(input);
-    return output!;
+    if (!output || !output.emotion) {
+      console.warn('Emotion analysis returned empty or invalid response.');
+      return { emotion: 'Neutral' };
+    }
+    return output;
   } catch (error) {
     console.error('Error in analyzeEmotionFlow:', error);
+    // Return a default value or error object
     return { emotion: 'Neutral' };
   }
 });
