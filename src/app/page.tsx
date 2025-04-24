@@ -7,7 +7,6 @@ import {Label} from '@/components/ui/label';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {recommendMovie, RecommendMovieOutput} from '@/ai/flows/recommend-movie';
 import {analyzeEmotion, AnalyzeEmotionOutput} from '@/ai/flows/analyze-emotion';
-import {Movie} from '@/services/movie-recommendation';
 import {cn} from '@/lib/utils';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {Camera} from 'lucide-react';
@@ -64,7 +63,7 @@ export default function Home() {
   const [language, setLanguage] = useState('English');
   const [genre, setGenre] = useState('Action');
   const [recommendations, setRecommendations] = useState<
-    {title: string; genre: string; moviePoster: string}[] | null
+    {title: string; poster: string}[] | null
   >(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isEmotionLoading, setIsEmotionLoading] = useState(false);
@@ -193,7 +192,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <h1 className="text-3xl font-bold mb-4 text-primary">CineFeel - Movie Recommendation App</h1>
+      <h1 className="text-3xl font-bold mb-4 text-primary">CinePhile - Movie Recommendation App</h1>
 
       <Card className="w-full max-w-md border-primary shadow-md">
         <CardHeader>
@@ -307,18 +306,18 @@ export default function Home() {
               {recommendations.map((movie, index) => (
                 <li key={`${movie.title}-${index}`} className="py-2">
                   <div className="flex flex-col items-center">
-                    {movie.moviePoster && (
+                    {movie.poster && (
                       <Image
-                        src={movie.moviePoster}
+                        src={movie.poster}
                         alt={movie.title}
                         width={200}
                         height={300}
                         className="rounded-md mb-2"
                         key={movie.title}
+                        unoptimized={true}
                       />
                     )}
                     <span className="text-center">{movie.title}</span>
-                    <span className="text-center text-sm text-muted-foreground">({movie.genre})</span>
                   </div>
                 </li>
               ))}
